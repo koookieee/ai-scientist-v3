@@ -8,6 +8,26 @@ argument-hint: "[query or topic]"
 
 Search query: $ARGUMENTS
 
+## Preferred: `/app/search` CLI (when available)
+
+Inside Harbor sandboxes, a CLI at `/app/search` wraps a fast 928K-paper arXiv search API.
+Three subcommands map 1:1 to the API:
+
+```bash
+/app/search batch "query 1" "query 2" --max 6 --sort importance
+/app/search related <arxiv_id> --max 6
+/app/search query <arxiv_id> [<arxiv_id> ...] --q "what are the key contributions?"
+```
+
+The CLI reads its endpoint from `/app/search_api_url.txt` (set by `run.sh`,
+defaults to a hosted endpoint). Self-hosters: see
+[`koookieee/ReviewGenie`](https://github.com/koookieee/ReviewGenie/tree/selfhost/selfhost)
+for a `docker compose up` deployment.
+
+If `/app/search` is **not** present (e.g. you're using the upstream/non-Harbor
+flow), fall back to Semantic Scholar / OpenAlex / OpenReview / CrossRef as
+described below.
+
 Four APIs, each with a clear role:
 
 | API | Role | Auth |

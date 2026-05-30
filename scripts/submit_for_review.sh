@@ -15,13 +15,19 @@
 #   3. Updates submissions/version_log.json
 #
 # Environment variables:
-#   REVIEWER_MODE  — "subagent" (default) uses a single reviewer subagent
+#   REVIEWER_MODE  — "api-external" (default) calls a remote review HTTP API.
+#                    Async submit + poll; the agent never leaves the box.
+#                    Default URL: https://review-api.eigenlabs.online (hosted by koookieee/ReviewGenie).
+#                    Override with REVIEW_API_URL or self-host (see selfhost/ in the ReviewGenie repo).
+#                    "subagent" uses a single reviewer subagent on the driving agent's CLI.
 #                    "ensemble" runs 3 diversified reviewers in parallel:
 #                      - Comprehensive reviewer (reviewer.md)
 #                      - Idea/literature reviewer (idea-reviewer.md)
 #                      - Code quality reviewer (code-reviewer.md)
 #                    Each reviewer can run on a different CLI backend (claude, codex, gemini).
-#                    "api" uses external reviewer API (works with any runtime)
+#                    "api" uses the original external reviewer (legacy behavior).
+#   REVIEW_API_URL  — Base URL when REVIEWER_MODE=api-external.
+#                    Default: https://review-api.eigenlabs.online
 #   AGENT_TYPE     — "claude-code" or "gemini-cli" (optional, for subagent CLI selection)
 #   CODEX_MODEL    — Model for Codex CLI (default: gpt-5.2-codex)
 #   GEMINI_MODEL   — Model for Gemini CLI (default: auto)
@@ -54,7 +60,7 @@ EXTRACT_SCRIPT="$BASE_DIR/.claude/skills/review-paper/scripts/extract_and_genera
 
 mkdir -p "$SUBMISSIONS_DIR"
 
-REVIEWER_MODE="${REVIEWER_MODE:-ensemble}"
+REVIEWER_MODE="${REVIEWER_MODE:-api-external}"
 REVIEWER_TIMEOUT="${REVIEWER_TIMEOUT:-1800}"  # Per-reviewer timeout in seconds (default: 30 min)
 CLAUDE_REVIEWER_MODEL="${CLAUDE_REVIEWER_MODEL:-}"  # Override model for Claude reviewer (e.g. claude-sonnet-4-5-20250929)
 
@@ -564,6 +570,105 @@ except Exception as e:
 
     echo "Reviewer subagent complete."
 
+elif [ "$REVIEWER_MODE" = "api-external" ]; then
+    # =========================================================================
+    # API-EXTERNAL MODE: HTTP review API (async submit + poll)
+    #
+    # Posts the paper to a remote review service and polls for the result.
+    # Decouples the reviewer from the driving agent — anyone (or any host) can
+    # provide the review without sharing your Claude/Codex/Gemini key.
+    #
+    # Protocol the remote API must implement:
+    #   POST /review/start  body: {latex_content, title, abstract}
+    #                       resp: {job_id, status: "pending"}
+    #   GET  /review/status/{job_id}
+    #                       resp: {status: "pending"|"running"|"success"|"error"|"timeout",
+    #                              review_text, error}
+    #
+    # Reference open-source implementation:
+    #   https://github.com/koookieee/ReviewGenie/tree/selfhost/selfhost
+    #
+    # Environment vars:
+    #   REVIEW_API_URL          base URL (default: hosted endpoint below)
+    #   REVIEW_POLL_INTERVAL    seconds between polls (default: 15)
+    #   REVIEW_POLL_MAX_SEC     client-side cap (default: 2700 = 45 min)
+    # =========================================================================
+    REVIEW_API_URL="${REVIEW_API_URL:-https://review-api.eigenlabs.online}"
+    POLL_INTERVAL="${REVIEW_POLL_INTERVAL:-15}"
+    POLL_MAX_SEC="${REVIEW_POLL_MAX_SEC:-2700}"
+    echo "Calling review API at $REVIEW_API_URL ..."
+
+    TITLE=$(grep -m1 '\\title{' "$TEX_PATH" 2>/dev/null | sed 's/.*\\title{\([^}]*\)}.*/\1/' || echo "")
+    ABSTRACT=$(python3 -c "
+import re, sys
+tex = open(sys.argv[1]).read()
+m = re.search(r'\\begin\{abstract\}(.*?)\\end\{abstract\}', tex, re.DOTALL)
+if m: print(m.group(1).strip())
+" "$TEX_PATH" 2>/dev/null || echo "")
+
+    PAYLOAD_FILE=$(mktemp)
+    python3 -c "
+import json, sys
+print(json.dumps({
+    'latex_content': open(sys.argv[1]).read(),
+    'title':         sys.argv[2],
+    'abstract':      sys.argv[3],
+}))
+" "$TEX_PATH" "$TITLE" "$ABSTRACT" > "$PAYLOAD_FILE"
+
+    START_RESPONSE=$(mktemp)
+    START_HTTP=$(curl -s -w '%{http_code}' -o "$START_RESPONSE" \
+        -X POST "$REVIEW_API_URL/review/start" \
+        -H 'Content-Type: application/json' \
+        -d @"$PAYLOAD_FILE" \
+        --max-time 60)
+
+    if [ "$START_HTTP" != "200" ]; then
+        echo "Review API /review/start returned HTTP $START_HTTP" >&2
+        cat "$START_RESPONSE" >&2
+        echo "[Review API submit failed - HTTP $START_HTTP]" > "$RAW_RESPONSE"
+        rm -f "$START_RESPONSE" "$PAYLOAD_FILE"
+    else
+        JOB_ID=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('job_id',''))" "$START_RESPONSE")
+        rm -f "$START_RESPONSE" "$PAYLOAD_FILE"
+        if [ -z "$JOB_ID" ]; then
+            echo "Review API /review/start returned no job_id" >&2
+            echo "[Review API submit failed - no job_id]" > "$RAW_RESPONSE"
+        else
+            echo "Submitted review job: $JOB_ID — polling for completion..."
+            STATUS_RESPONSE=$(mktemp)
+            FINAL_STATUS=""
+            ELAPSED=0
+            while [ "$ELAPSED" -lt "$POLL_MAX_SEC" ]; do
+                sleep "$POLL_INTERVAL"
+                ELAPSED=$((ELAPSED + POLL_INTERVAL))
+                POLL_HTTP=$(curl -s -w '%{http_code}' -o "$STATUS_RESPONSE" \
+                    -X GET "$REVIEW_API_URL/review/status/$JOB_ID" \
+                    --max-time 30)
+                if [ "$POLL_HTTP" != "200" ]; then
+                    echo "  [${ELAPSED}s] poll HTTP $POLL_HTTP — retrying"
+                    continue
+                fi
+                FINAL_STATUS=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('status',''))" "$STATUS_RESPONSE")
+                echo "  [${ELAPSED}s] status=$FINAL_STATUS"
+                case "$FINAL_STATUS" in
+                    success|error|timeout|not_found) break ;;
+                esac
+            done
+
+            if [ "$FINAL_STATUS" = "success" ]; then
+                python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('review_text',''))" "$STATUS_RESPONSE" > "$RAW_RESPONSE"
+                echo "Review API returned success."
+            else
+                ERR=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('error',''))" "$STATUS_RESPONSE" 2>/dev/null || echo "")
+                echo "Review API job ended with status=$FINAL_STATUS error=$ERR" >&2
+                cat "$STATUS_RESPONSE" >&2
+                echo "[Review API job failed - status=$FINAL_STATUS - $ERR]" > "$RAW_RESPONSE"
+            fi
+            rm -f "$STATUS_RESPONSE"
+        fi
+    fi
+
 else
     # =========================================================================
     # API MODE: External reviewer (original behavior)
@@ -663,6 +768,10 @@ elif [ "$REVIEWER_MODE" = "subagent" ]; then
     if [ -d "$BASE_DIR/reviewer_trace" ]; then
         cp -r "$BASE_DIR/reviewer_trace" "$VERSION_DIR/reviewer_communications/trace"
     fi
+elif [ "$REVIEWER_MODE" = "api-external" ]; then
+    # api-external mode: RAW_RESPONSE is plain text (the review) returned by the API.
+    cp "$RAW_RESPONSE" "$VERSION_DIR/reviewer_communications/raw_response.txt"
+    { echo "## Review (api-external)"; echo ""; cat "$RAW_RESPONSE"; echo ""; } > "$RESPONSE_FILE"
 else
     # API mode: RAW_RESPONSE is JSON, extract the question
     cp "$RAW_RESPONSE" "$VERSION_DIR/reviewer_communications/raw_response.json"

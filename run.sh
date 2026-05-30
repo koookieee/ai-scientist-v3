@@ -263,8 +263,11 @@ done
 # Pass AGENT_TYPE to the container so submit_for_review.sh knows which CLI to use
 echo "AGENT_TYPE=$AGENT_TYPE" >> "$ENV_DIR/.env"
 
-# Force ensemble reviewer mode (override any stale value in .env)
-echo "REVIEWER_MODE=ensemble" >> "$ENV_DIR/.env"
+# Default reviewer mode: api-external (calls a hosted/self-hosted review HTTP API).
+# Honors any REVIEWER_MODE the user sets in their environment; otherwise defaults
+# to api-external so a fresh clone works out of the box without a CLI reviewer.
+echo "REVIEWER_MODE=${REVIEWER_MODE:-api-external}" >> "$ENV_DIR/.env"
+echo "REVIEW_API_URL=${REVIEW_API_URL:-https://review-api.eigenlabs.online}" >> "$ENV_DIR/.env"
 
 # --- GitLab repo setup (if GITLAB_KEY is set) ---
 GITLAB_REPO_URL=""
@@ -319,6 +322,11 @@ echo "Staging build context..."
 cp -rL "$SCRIPT_DIR/blank_icbinb_latex" "$ENV_DIR/blank_icbinb_latex"
 cp -rL "$SCRIPT_DIR/scripts"            "$ENV_DIR/scripts"
 cp -rL "$SCRIPT_DIR/.claude"            "$ENV_DIR/.claude"
+
+# Write search API URL into the build context. The /app/search CLI inside the
+# sandbox reads this file. Defaults to the hosted ReviewGenie endpoint so a
+# fresh clone works zero-config.
+echo "${SEARCH_PUBLIC_URL:-https://search-api.eigenlabs.online}" > "$ENV_DIR/search_api_url.txt"
 
 # Stage Codex OAuth auth for Docker build context (if available)
 mkdir -p "$ENV_DIR/.codex_auth"

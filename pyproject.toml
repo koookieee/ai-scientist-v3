@@ -9,8 +9,10 @@ dependencies = [
     "uvicorn",
     "sse-starlette",
     "ijson",
-    # Harbor (latest from git — provides ATIF trajectory generation + agent orchestration)
-    "harbor @ git+https://github.com/harbor-framework/harbor.git",
+    # Pinned to 0.7.0 — the api-external reviewer mode and the in-sandbox file
+    # upload path (used by ReviewGenie's review_api.py) rely on the
+    # _setup_environment hook that was renamed in harbor 0.8+. Bump deliberately.
+    "harbor==0.7.0",
     # Modal (optional cloud execution)
     "modal",
     # GitLab integration

@@ -33,6 +33,13 @@ COPY scripts/ /app/scripts/
 COPY .claude/ /app/.claude/
 COPY .codex_auth/ /app/.codex_auth/
 
+# Search API config + CLI for the in-sandbox /app/search wrapper.
+# The CLI calls a remote search HTTP API (defaults to the hosted ReviewGenie endpoint).
+# Override at runtime by writing a different URL to /app/search_api_url.txt.
+COPY search_api_url.txt /app/search_api_url.txt
+RUN cp /app/.claude/skills/search-papers/search /app/search && \
+    chmod +x /app/search
+
 # Create workspace structure and pre-fill LaTeX template
 RUN mkdir -p /app/experiment_codebase/baselines /app/experiment_codebase/main \
     /app/experiment_codebase/ablations /app/experiment_codebase/plotting \
