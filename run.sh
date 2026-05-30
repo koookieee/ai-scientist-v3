@@ -488,6 +488,12 @@ if [[ "$USE_UPSTREAM_AGENT" == "1" ]]; then
         HARBOR_ARGS+=(--ak "max_turns=200")
         HARBOR_ARGS+=(--ak "reasoning_effort=high")
     fi
+    # Pass the LLM endpoint + key into the sandbox so claude-code can talk to it.
+    # Without these, the agent inside the sandbox calls the default api.anthropic.com
+    # with the wrong key shape, silently fails, and harbor hangs waiting for output.
+    [[ -n "${ANTHROPIC_BASE_URL:-}" ]]   && HARBOR_ARGS+=(--ae "ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL")
+    [[ -n "${ANTHROPIC_API_KEY:-}" ]]    && HARBOR_ARGS+=(--ae "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
+    [[ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]] && HARBOR_ARGS+=(--ae "ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN")
 else
     HARBOR_ARGS+=(--agent-import-path "$PATCHED_AGENT_IMPORT_PATH")
     HARBOR_ARGS+=(--ak "artifact_sync_interval_sec=$ARTIFACT_SYNC_INTERVAL")
