@@ -179,6 +179,52 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# --- Ensure 'harbor' CLI is on PATH (auto-activate a venv if needed) ---
+if ! command -v harbor >/dev/null 2>&1; then
+    for _venv in "$SCRIPT_DIR/.venv" "/root/venv"; do
+        if [[ -x "$_venv/bin/harbor" ]]; then
+            # shellcheck disable=SC1091
+            source "$_venv/bin/activate"
+            echo "Activated venv at $_venv (harbor found)"
+            break
+        fi
+    done
+    if ! command -v harbor >/dev/null 2>&1; then
+        echo "ERROR: 'harbor' CLI not found on PATH and no venv with it at \$SCRIPT_DIR/.venv or /root/venv. Run 'pip install -e .' inside an activated venv first." >&2
+        exit 1
+    fi
+fi
+
+# --- Apply harbor file_context_path patch (idempotent) ---
+# harbor 0.1.45 calls e2b's Template().from_dockerfile(...) without
+# file_context_path, so e2b uses get_caller_directory() and resolves the
+# COPY context to harbor's site-packages dir, raising
+# `ValueError: No files found in <site-packages>/harbor/environments/<x>/`.
+# Patch the installed file once so every harbor run picks it up.
+python3 - <<'PYEOF'
+import importlib.util, pathlib, sys
+spec = importlib.util.find_spec("harbor.environments.e2b")
+if spec is None or not spec.origin:
+    sys.exit(0)
+p = pathlib.Path(spec.origin)
+src = p.read_text()
+old = ('            template = Template().from_dockerfile(\n'
+       '                dockerfile_content_or_path=str(self._environment_definition_path),\n'
+       '            )')
+new = ('            template = Template(\n'
+       '                file_context_path=str(self._environment_definition_path.parent),\n'
+       '            ).from_dockerfile(\n'
+       '                dockerfile_content_or_path=str(self._environment_definition_path),\n'
+       '            )')
+if "file_context_path=str(self._environment_definition_path.parent)" in src:
+    sys.exit(0)
+if old not in src:
+    print(f"warning: harbor e2b.py file_context_path patch anchor not found in {p}; skipping", file=sys.stderr)
+    sys.exit(0)
+p.write_text(src.replace(old, new, 1))
+print(f"patched {p}")
+PYEOF
+
 # --- Load .env into the current shell so harbor/agent can read them (optional) ---
 for env_file in "$SCRIPT_DIR/.env" "$SCRIPT_DIR/../.env"; do
     if [[ -f "$env_file" ]]; then
@@ -480,20 +526,13 @@ HARBOR_ARGS=(
 
 if [[ "$USE_UPSTREAM_AGENT" == "1" ]]; then
     HARBOR_ARGS+=(-a "$UPSTREAM_AGENT_FLAG")
-    # Pin claude-code version. Harbor 0.7.0's stream-json parser breaks with
-    # claude-code >= 2.1.130 (the trajectory never updates and the run hangs in
-    # epoll). 2.1.101 is the last version verified end-to-end.
+    # Pin claude-code to the version verified end-to-end with harbor 0.1.45.
+    # Newer claude-code (>= 2.1.158) hangs harbor's stream-json reader; harbor's
+    # async client never drains the response and the run wedges in ep_poll on a
+    # CLOSE-WAIT socket. 2.1.145 is the version captured in gold trajectories.
     if [[ "$AGENT_TYPE" == "claude-code" ]]; then
-        HARBOR_ARGS+=(--ak "version=2.1.101")
-        HARBOR_ARGS+=(--ak "max_turns=200")
-        HARBOR_ARGS+=(--ak "reasoning_effort=high")
+        HARBOR_ARGS+=(--ak "version=2.1.145")
     fi
-    # Pass the LLM endpoint + key into the sandbox so claude-code can talk to it.
-    # Without these, the agent inside the sandbox calls the default api.anthropic.com
-    # with the wrong key shape, silently fails, and harbor hangs waiting for output.
-    [[ -n "${ANTHROPIC_BASE_URL:-}" ]]   && HARBOR_ARGS+=(--ae "ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL")
-    [[ -n "${ANTHROPIC_API_KEY:-}" ]]    && HARBOR_ARGS+=(--ae "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
-    [[ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]] && HARBOR_ARGS+=(--ae "ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN")
 else
     HARBOR_ARGS+=(--agent-import-path "$PATCHED_AGENT_IMPORT_PATH")
     HARBOR_ARGS+=(--ak "artifact_sync_interval_sec=$ARTIFACT_SYNC_INTERVAL")
