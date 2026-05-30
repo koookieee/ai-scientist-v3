@@ -24,3 +24,13 @@ dependencies = [
 dev = [
     "pytest",
 ]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# This repo's top level holds runtime templates (ideas/, blank_icbinb_latex/, viewer/, ...)
+# alongside a single Python package (local_harbor_agents/). Setuptools' auto-discovery
+# can't tell them apart and bails. Explicitly list what to install as Python packages.
+[tool.setuptools]
+packages = ["local_harbor_agents"]
