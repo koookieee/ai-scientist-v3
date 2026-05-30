@@ -345,11 +345,11 @@ fi
 # COPY prev_artifacts/ to fail. The placeholder ensures the dir is non-empty.
 mkdir -p "$ENV_DIR/prev_artifacts"
 touch "$ENV_DIR/prev_artifacts/.keep"
-if [[ -n "$GITLAB_RESUME_BRANCH" ]]; then
+if [[ -n "${GITLAB_RESUME_BRANCH:-}" ]]; then
     # Git-based resume: workspace will be populated by branching off the previous
     # GitLab branch at container runtime — no need to stage artifacts into Docker.
     echo "Skipping artifact staging (git-based resume from branch $GITLAB_RESUME_BRANCH)"
-elif [[ -n "$PREV_ARTIFACTS" ]]; then
+elif [[ -n "${PREV_ARTIFACTS:-}" ]]; then
     cp -r "$PREV_ARTIFACTS"/* "$ENV_DIR/prev_artifacts/" 2>/dev/null || true
 fi
 
