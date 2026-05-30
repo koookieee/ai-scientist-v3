@@ -26,6 +26,14 @@ ARTIFACT_SYNC_INTERVAL="180"
 AGENT_TYPE="claude-code"
 PATCHED_AGENT_IMPORT_PATH=""  # set after arg parsing based on AGENT_TYPE
 FEEDBACK=""
+# Optional vars referenced under `set -u`; declare here so missing-env doesn't
+# abort runs that don't use GitLab / resume / a custom JOB_NAME.
+GITLAB_RESUME_BRANCH="${GITLAB_RESUME_BRANCH:-}"
+GITLAB_BRANCH="${GITLAB_BRANCH:-}"
+GITLAB_REPO_URL="${GITLAB_REPO_URL:-}"
+GITLAB_WEB_URL="${GITLAB_WEB_URL:-}"
+PREV_ARTIFACTS="${PREV_ARTIFACTS:-}"
+JOB_NAME="${JOB_NAME:-}"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
