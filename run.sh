@@ -480,6 +480,14 @@ HARBOR_ARGS=(
 
 if [[ "$USE_UPSTREAM_AGENT" == "1" ]]; then
     HARBOR_ARGS+=(-a "$UPSTREAM_AGENT_FLAG")
+    # Pin claude-code version. Harbor 0.7.0's stream-json parser breaks with
+    # claude-code >= 2.1.130 (the trajectory never updates and the run hangs in
+    # epoll). 2.1.101 is the last version verified end-to-end.
+    if [[ "$AGENT_TYPE" == "claude-code" ]]; then
+        HARBOR_ARGS+=(--ak "version=2.1.101")
+        HARBOR_ARGS+=(--ak "max_turns=200")
+        HARBOR_ARGS+=(--ak "reasoning_effort=high")
+    fi
 else
     HARBOR_ARGS+=(--agent-import-path "$PATCHED_AGENT_IMPORT_PATH")
     HARBOR_ARGS+=(--ak "artifact_sync_interval_sec=$ARTIFACT_SYNC_INTERVAL")
