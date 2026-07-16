@@ -1,0 +1,8 @@
+{
+  "Name": "tabpfn_vs_boosting",
+  "Title": "When Does TabPFN Beat Gradient Boosting? A Systematic Study on Small Tabular Datasets",
+  "Short Hypothesis": "TabPFN v2's in-context learning approach likely has a crossover point against XGBoost/LightGBM that depends on dataset size, feature count, and feature types \u2014 but the exact boundary is poorly characterized.",
+  "Related Work": "Hollmann et al. (2023) introduced TabPFN at ICLR. PriorLabs released TabPFN v2 (Nature, 2025). McElfresh et al. (2023) asked 'When Do Neural Nets Outperform Boosted Trees on Tabular Data?' but predates TabPFN v2. No systematic study of v2 against tuned gradient boosting on the OpenML CC18 benchmark exists.",
+  "GPU_Needed": false,
+  "GPU_Note": "RTX 5060 with 8GB VRAM is available on this machine. Tabpfn vs xgboost study, no training needed."
+}

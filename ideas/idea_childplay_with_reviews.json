@@ -1,0 +1,64 @@
+{
+  "Name": "childplay_improvement_with_reviews",
+  "Title": "Show Don't Tell: Evaluating Large Language Models Beyond Textual Understanding with ChildPlay: Addressing Reviewer Concerns",
+  "Rejected_From": "NeurIPS 2024",
+  "Short Hypothesis": "Improve this paper. The ChildPlay paper was rejected from NeurIPS 2024. The reviewer concerns are addressable through improved experiments, better baselines, and clearer writing.",
+  "Task": "You are improving a real rejected research paper. Produce an improved, publication-ready version that addresses the reviewer concerns listed below.\n\nSTEP 1 — Download and read the paper source (first ~10 pages):\n```bash\nmkdir -p /app/paper_source && cd /app/paper_source\ncurl -sL 'https://arxiv.org/e-print/2407.11068' -o source.tar.gz\ntar -xzf source.tar.gz 2>/dev/null || tar -xf source.tar.gz 2>/dev/null || unzip source.tar.gz 2>/dev/null\nls\n# Find main tex: ls *.tex | head -5\nls *.tex 2>/dev/null | head -3\nfind . -name '*.tex' | head -3\n```\n\nSTEP 2 — Clone the repo and understand the codebase:\n```bash\ncd /app && git clone https://github.com/child-play-neurips/child-play experiment_codebase\ncd experiment_codebase && ls && head -100 README.md 2>/dev/null || head -100 readme.md 2>/dev/null\n```\n\nSTEP 3 — Reproduce baseline results, then add the missing experiments to address reviewer concerns listed in Human_Reviews_From_OpenReview.\n\nCRITICAL ITERATION REQUIREMENT:\n- You MUST submit at least 5 versions of the paper before finishing.\n- After each review, carefully read ALL reviewer feedback, address EVERY concern, run NEW experiments if needed, and resubmit.\n- Do NOT stop after 1-2 submissions. Keep iterating until you have submitted at least 5 times or reached 8/10.\n- Each new version must show measurable improvement over the previous (new experiments, new results, stronger writing).\n- Only call the task complete after 5+ submissions.\n\nEXPERIMENTAL RIGOR (non-negotiable):\n- Before your FIRST submission: run at least one baseline and one new experiment — all numbers must be real\n- Each subsequent version needs meaningful new content: new result, new baseline, new analysis, or fixing a critical reviewer-flagged issue (not just rephrasing)\n- If a dataset/environment fails twice in 20 minutes: switch to a working alternative immediately (smaller dataset, different source, simpler setup)\n- Check /data/ first — datasets may already be cached\n- You have 6 hours — allocate ~30min literature, ~2-3h experiments, rest for writing/iteration",
+  "Human_Reviews_From_OpenReview": {
+    "review_1": {
+      "summary": "The paper presents a new benchmark to assesse the cognitive abilities of GPT-3.5 and GPT-4 using a suite of non-linguistic games. These include Tic-Tac-Toe, Connect Four, Battleship, LEGO Connect Language (LCL), and a shapes game, all encoded in ASCII to evaluate strategic thinking, decision-making, and spatial reasoning.",
+      "strengths": "This work provides a novel test dataset, which could be helpful for evaluating the reasoning abilities of LLMs and mitigating the issue of current test datasets being contaminated.",
+      "weaknesses": "The experimental design and presentation in the text need improvement. More comprehensive experiments may be necessary to validate the quality and practical value of the dataset.",
+      "questions": "",
+      "limitations": "Yes, the author has expressed some limitations, but the aforementioned weaknesses also need to be addressed.",
+      "rating": 4,
+      "soundness": "",
+      "confidence": 4
+    },
+    "review_2": {
+      "summary": "The paper introduces ChildPlay, a suite of non-language-based games such as Tic-Tac-Toe, Connect Four, Battleship, LEGO Connect Language (LCL), and the game of Shapes, to assess the reasoning, strategic capabilities, symbolic reasoning, and pattern recognition abilities of large language models (LLMs) beyond traditional linguistic modalities. The authors argue that these games provide structured environments with clear success criteria, making them suitable for evaluating the strategic thinking, planning, and long-term decision-making capabilities of LLMs.",
+      "strengths": "See the above \"Pros\" in the review section.",
+      "weaknesses": "See the review section.",
+      "questions": "",
+      "limitations": "1. The paper acknowledges that the use of binary (win/loss) outcomes for games may exaggerate perceived capabilities or weaknesses of LLMs.\n2. The experiments are limited to two specific LLMs (GPT-3.5 and GPT-4), and the generalizability of the findings to other LLMs is not explored.\n3. The paper does not provide error bars or other statistical significance measures for the experimental results, which could help in interpreting the findings.",
+      "rating": 5,
+      "soundness": "",
+      "confidence": 3
+    },
+    "review_3": {
+      "summary": "The paper aims to explore the cognitive capabilities of large language models (LLMs) like GPT-3.5 and GPT-4 beyond traditional linguistic tasks. In particular, the author introduces a novel evaluation approach using a suite of games, named ChildPlay, which includes Tic-Tac-Toe, Connect Four, Battleship, LEGO Connect Language (LCL), and a game of shapes, which are designed to test strategic thinking, decision-making, spatial reasoning, and general cognitive abilities. The findings indicate that despite proficiency in standard benchmarks, both GPT models show limited abilities in strategic gameplay and spatial reasoning, revealing a significant blind spot in current LLM evaluations.",
+      "strengths": "Please see the review for more details.",
+      "weaknesses": "1. More detailed captions in figures would be beneficial for the reader. For instance, in Fig. 4, the authors just mention \"Minimax vs random player\" which does not describe anything about the figure. What do the numbers represent? The Agent represents which LLM? etc.\n\n2. How did we ensure the LLM understood the instructions in Lines 128-131? Further, Validity Testing quantifies the validity of each LEGO construct but doesn't ensure whether the LLM understood the actual reasoning/rules that determine the validity.\n\n3. Lines 226-229: The authors find that In the shape detection tests, GPT-3.5’s performance is close to random chance but GPT-4 successfully identifies shapes with an accuracy of 80% or higher, but do not explain any intuition behind why this may be the case. Are the authors attributing this increased performance to just the size of the models?\n\n4. The authors propose these datasets as benchmarks but only test the GPT-family LLMs. To show the robustness of the benchmark, it would be beneficial if the authors could compare the performance of other LLMs like Llama-family, Mistral-family, etc.",
+      "questions": "",
+      "limitations": "See the review section for more details.",
+      "rating": 5,
+      "soundness": "",
+      "confidence": 4
+    },
+    "review_4": {
+      "summary": "The authors propose a series of text-based visual games to test the reasoning abilities of LLMs. The main appeal of using visual games in ASCII format is to minimize the possibility that the LLM had been trained on them. Concretely, the list of games evaluated in this work is: TIC-TAC-TOE, connect four, Battleship, and two new games on recognizing shapes and rule-based positioning of LEGO pieces. Results show that LLMs including GPT4 are bad at these tasks, even if they are able to provide the optimal strategy to win the game, which puts into question how much of current LLMs' code and language reasoning skills come from overfitting the training set rather than broad generalization.",
+      "strengths": "* Interesting approach of using visual games to test LLM reasoning abilities.\n* Highlights an interesting and underexplored angle, focusing on the visual aspect of reasoning.\n* Adds new games to the benchmark, providing a broader evaluation spectrum.\n* Presents surprising and valuable findings that contribute to understanding LLM capabilities.\n* Offers a reality check for the research community on the current state of LLMs.\n* I was skeptical about the fact that LLMs are bad at tic-tac-toe, so I tried myself on qwen2-72b and the LLM completely failed.",
+      "weaknesses": "Quality\n=====\n* Clearly state the number of runs used for Figure 5 and ensure consistency in reported values (e.g., first blue bar sums to 113 while others sum to 100).\n* Provide a more detailed description of the experimental setup to enable reproducibility.\n* Investigate whether the LLM's poor performance on games like tic-tac-toe is due to playing against a random player and consider testing against stronger opponents like minimax.\n* Study the effect of the prompt or pre-prompt on the model's abilities and explore few-shot learning scenarios.\n\nClarity\n=====\n\n* Specify the number of runs used for Figure 5 and clarify discrepancies (e.g., the first blue bar summing to 113 vs. 100).\n* Explain what GPT-X random means in Figure 6 to avoid confusion with different sampling strategies for GPT.\n* Correct the reference to Battleship results being in Figure 14 instead of Figure 5 as mentioned in line 185.\n* Improve Figure 8 by grouping subfigures visually and providing a detailed, self-contained caption.\n\nOriginality\n========\n\n* Highlight the novel angle of emphasizing visual aspects and adding two new games, differentiating this work from previous studies.\n\nSignificance\n=========\n\n* Discuss the potential for new LLMs to overfit the proposed benchmarks and suggest the creation of a hidden third game for evaluation.\n* Compare this work with the ARC-AGI dataset and challenge, discussing different insights and learnings from both benchmarks.",
+      "questions": "",
+      "limitations": "The authors properly discuss limitations in Section 4.1.",
+      "rating": 5,
+      "soundness": "",
+      "confidence": 4
+    }
+  },
+  "What_NOT_To_Do": "Do not redesign the method from scratch. Do NOT resubmit a new version with only minor text polish — each version must show meaningful progress (new experimental result, new analysis, new baseline, or fixing a critical structural issue the reviewer flagged). Do NOT spend more than 20 minutes on any single dataset/environment issue — switch to a feasible working alternative. Do NOT stop after 1-2 submissions — submit at least 5 versions.",
+  "GPU_Needed": false,
+  "GPU_Note": "RTX 5060 8GB VRAM available. LLM game benchmark via API calls only. No local model needed.",
+  "LLM_Endpoints": [
+    {
+      "api_base_url": "https://model.inferx.net/funccall/tn-329uzxmlug/endpoints/Qwen3.6-27B-FP8/v1",
+      "model_name": "Qwen/Qwen3.6-27B-FP8",
+      "api_key": "ix_33169d5e30c4ffcfe6d36df719225789fa9c6428ee60df87b76399ee737973e5"
+    },
+    {
+      "api_base_url": "https://model.inferx.net/funccall/tn-329uzxmlug/endpoints/Qwen3.6-35B-A3B-FP8/v1",
+      "model_name": "Qwen/Qwen3.6-35B-A3B-fp8",
+      "api_key": "ix_33169d5e30c4ffcfe6d36df719225789fa9c6428ee60df87b76399ee737973e5"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "Name": "opencode_instruction_hierarchy",
+  "Title": "Do Coding Agents Actually Follow AGENTS.md? Testing Real Rules from Real Repos",
+  "Hypothesis": "Coding agents running through real runtimes (OpenCode, Claude Code, Codex CLI) fail to follow a significant fraction of rules in real-world AGENTS.md files, especially rules that go against model defaults or conflict with the runtime's own prompt.",
+  "Approach": [
+    "1. Pull real AGENTS.md files from popular GitHub repos (next.js, sentry, pydantic-ai, browser-use, etc.)",
+    "2. For each repo, identify rules that require the model to do something AGAINST its default behavior",
+    "3. Create coding tasks natural to each repo that test whether the agent follows those rules",
+    "4. Run tasks through coding agent runtimes and judge compliance",
+    "5. Compare: which rules break? Does the runtime matter? Does the model matter?"
+  ],
+  "Key Design Principle": "Only test rules where the model would do something DIFFERENT without the AGENTS.md. If a rule says 'use snake_case for SQL columns' and every model already does that by default, it's not a real test. Good tests: rules that contradict common conventions, require unusual patterns, or conflict with each other.",
+  "Runtimes": [
+    "OpenCode: curl -fsSL https://opencode.ai/install | bash && opencode run -m MODEL --format json -- 'task'",
+    "Claude Code: claude -p --model MODEL 'task'",
+    "Codex CLI: codex exec --model MODEL -- 'task'"
+  ],
+  "HOW TO RUN EXPERIMENTS": [
+    "Use the actual coding agent CLI (opencode run, claude -p, codex exec) for generating responses.",
+    "Do NOT call model APIs directly (anthropic.Anthropic(), google.genai) \u2014 that bypasses the runtime.",
+    "API calls are fine for judging only."
+  ],
+  "Code References": [
+    {
+      "url": "https://github.com/sst/opencode",
+      "notes": "OpenCode source \u2014 study how it assembles AGENTS.md into prompts"
+    }
+  ],
+  "GPU_Needed": false,
+  "GPU_Note": "RTX 5060 with 8GB VRAM is available on this machine. Llm coding agent eval via api."
+}
